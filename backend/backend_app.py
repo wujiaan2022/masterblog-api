@@ -13,19 +13,27 @@ POSTS = [
 
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
-    ordered_posts = [
-        OrderedDict([
-            ("id", post["id"]),
-            ("title", post["title"]),
-            ("content", post["content"])
-        ])
-        for post in POSTS
-    ]
-    return app.response_class(
-        response=json.dumps(ordered_posts, indent=4),
-        status=200,
-        mimetype='application/json'
-    )
+    # Get optional sorting parameters from query string
+    sort_by = request.args.get("sort_by")  # e.g., "id", "title", "content"
+    order = request.args.get("order", "asc")  # "asc" or "desc", default to "asc"
+
+    # Validate the sort_by parameter
+    if sort_by not in [None, "id", "title", "content"]:
+        return jsonify({"error": "Invalid sort_by field. Must be 'id', 'title', or 'content'."}), 400
+
+    # Sort the posts if a valid sort_by field is provided
+    if sort_by:
+        reverse = (order == "desc")
+        try:
+            sorted_posts = sorted(POSTS, key=lambda post: post[sort_by], reverse=reverse)
+        except KeyError:
+            return jsonify({"error": f"Cannot sort by '{sort_by}'. Field does not exist."}), 400
+    else:
+        # If no sorting is specified, keep the original order
+        sorted_posts = POSTS
+
+    # Return the sorted or original list of posts as JSON
+    return jsonify(sorted_posts), 200
 
 
 @app.route('/api/posts', methods=['POST'])
